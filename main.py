@@ -6,11 +6,11 @@ import cv2
 from PIL import Image
 from sklearn.model_selection import train_test_split
 
-with_mask_path = r'/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask'
+with_mask_path = r'path/archive/data/with_mask'
 with_mask_files = os.listdir(with_mask_path)
 
 
-without_mask_path = r'/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask'
+without_mask_path = r'path/archive/data/without_mask'
 without_mask_files = os.listdir(without_mask_path)
 
 with_mask_labels = [1]*3725
@@ -18,19 +18,10 @@ without_mask_labels = [0]*3828
 
 labels = with_mask_labels + without_mask_labels
 
-#display image with/without mask
-'''
-img_mask = mpimg.imread('/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask/with_mask_1.jpg')
-img_no = mpimg.imread('/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask/without_mask_1.jpg')
-imgplot = plt.imshow(img_mask)
-plt.show()
-imgplot = plt.imshow(img_no)
-plt.show()
-'''
 #image processing
 data = []
 
-with_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask/'
+with_mask_path = 'path/archive/data/with_mask/'
 for img_file in with_mask_files:
     image = Image.open(with_mask_path + img_file)
     image = image.resize((128,128))
@@ -38,7 +29,7 @@ for img_file in with_mask_files:
     image = np.array(image)
     data.append(image)
 
-without_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask/'
+without_mask_path = 'path/archive/data/without_mask/'
 for img_file in without_mask_files:
     image = Image.open(without_mask_path + img_file)
     image = image.resize((128,128))
