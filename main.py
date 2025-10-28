@@ -1,125 +1,238 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import cv2
+import seaborn as sns
 from PIL import Image
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix, precision_score, recall_score, f1_score
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
-with_mask_path = r'/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask'
+# Paths to dataset
+with_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask'
 with_mask_files = os.listdir(with_mask_path)
 
-
-without_mask_path = r'/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask'
+without_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask'
 without_mask_files = os.listdir(without_mask_path)
 
-with_mask_labels = [1]*3725
-without_mask_labels = [0]*3828
-
+# Create labels
+with_mask_labels = [1] * 3725
+without_mask_labels = [0] * 3828
 labels = with_mask_labels + without_mask_labels
 
-#display image with/without mask
-'''
-img_mask = mpimg.imread('/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask/with_mask_1.jpg')
-img_no = mpimg.imread('/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask/without_mask_1.jpg')
-imgplot = plt.imshow(img_mask)
-plt.show()
-imgplot = plt.imshow(img_no)
-plt.show()
-'''
-#image processing
+# Manual data loading (kept for train_test_split compatibility)
 data = []
 
-with_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask/'
+with_mask_path_full = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask/'
 for img_file in with_mask_files:
-    image = Image.open(with_mask_path + img_file)
-    image = image.resize((128,128))
+    image = Image.open(with_mask_path_full + img_file)
+    image = image.resize((128, 128))
     image = image.convert('RGB')
     image = np.array(image)
     data.append(image)
 
-without_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask/'
+without_mask_path_full = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask/'
 for img_file in without_mask_files:
-    image = Image.open(without_mask_path + img_file)
-    image = image.resize((128,128))
+    image = Image.open(without_mask_path_full + img_file)
+    image = image.resize((128, 128))
     image = image.convert('RGB')
     image = np.array(image)
     data.append(image)
 
-#convert everything into a numpy arrays
+# Convert to numpy arrays
 x = np.array(data)
 y = np.array(labels)
 
-#train test split
+# Train-validation-test split
+x_train_val, x_test, y_train_val, y_test = train_test_split(x, y, test_size=0.2, random_state=2)
+x_train, x_val, y_train, y_val = train_test_split(x_train_val, y_train_val, test_size=0.2, random_state=2)
 
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=2)
+# Create ImageDataGenerator for data augmentation
+train_datagen = ImageDataGenerator(
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    horizontal_flip=True,
+    zoom_range=0.2,
+    brightness_range=[0.8, 1.2],
+    rescale=1./255
+)
 
-#scale the data make the rgb data from 0-1
-x_trained_scaled = x_train/255
-x_test_scaled = x_test/255
+# Validation and test generators without augmentation
+val_datagen = ImageDataGenerator(rescale=1./255)
+test_datagen = ImageDataGenerator(rescale=1./255)
 
-#build and use an CNN
-import tensorflow as tf
-#from tensorflow import keras
+# Create data generators using flow method
+batch_size = 32
+train_generator = train_datagen.flow(x_train, y_train, batch_size=batch_size, shuffle=True)
+val_generator = val_datagen.flow(x_val, y_val, batch_size=batch_size, shuffle=False)
+test_generator = test_datagen.flow(x_test, y_test, batch_size=batch_size, shuffle=False)
 
-num_of_classes = 2
-model = tf.keras.Sequential()
+# Calculate steps
+steps_per_epoch = len(x_train) // batch_size
+validation_steps = len(x_val) // batch_size
 
-model.add(tf.keras.layers.Conv2D(32, kernel_size = (3,3), activation = 'relu', input_shape=(128, 128, 3)))
-model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2)))
+# Build transfer learning model with MobileNetV2
+base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
+base_model.trainable = False
 
-model.add(tf.keras.layers.Conv2D(64, kernel_size = (3,3), activation = 'relu'))
-model.add(tf.keras.layers.MaxPooling2D(pool_size=(2,2)))
+# Build model architecture
+model = tf.keras.Sequential([
+    base_model,
+    GlobalAveragePooling2D(),
+    Dense(128, activation='relu'),
+    Dropout(0.5),
+    Dense(1, activation='sigmoid')
+])
 
-model.add(tf.keras.layers.Flatten())
+# Compile model with binary classification settings
+model.compile(
+    optimizer=Adam(learning_rate=0.001),
+    loss='binary_crossentropy',
+    metrics=['accuracy']
+)
 
-model.add(tf.keras.layers.Dense(128,activation='relu'))
-model.add(tf.keras.layers.Dropout(0.5))
-model.add(tf.keras.layers.Dense(64,activation='relu'))
-model.add(tf.keras.layers.Dropout(0.5))
+# Print model summary
+print("\nModel Architecture:")
+model.summary()
 
-model.add(tf.keras.layers.Dense(num_of_classes, activation='sigmoid'))
+# Setup training callbacks
+checkpoint = ModelCheckpoint(
+    filepath='models/best_model.h5',
+    monitor='val_loss',
+    save_best_only=True,
+    mode='min',
+    verbose=1
+)
 
-#compile
-model.compile(optimizer = 'adam',
-              loss='sparse_categorical_crossentropy',
-              metrics=['acc'])
+early_stopping = EarlyStopping(
+    monitor='val_loss',
+    patience=5,
+    restore_best_weights=True,
+    verbose=1
+)
 
-#train
-history = model.fit(x_trained_scaled, y_train, validation_split=0.1, epochs=5)
+reduce_lr = ReduceLROnPlateau(
+    monitor='val_loss',
+    factor=0.5,
+    patience=3,
+    min_lr=1e-7,
+    verbose=1
+)
 
-#model Eval
-loss,accuracy = model.evaluate(x_test_scaled, y_test)
-print('Test accuracy = ', accuracy)
+callbacks = [checkpoint, early_stopping, reduce_lr]
 
-h= history
-plt.plot(h.history['loss'], label = 'train loss')
-plt.plot(h.history['val_loss'], label= 'validation loss')
-plt.legend()
+# Train model
+print("\nStarting model training...")
+history = model.fit(
+    train_generator,
+    steps_per_epoch=steps_per_epoch,
+    validation_data=val_generator,
+    validation_steps=validation_steps,
+    epochs=30,
+    callbacks=callbacks,
+    verbose=1
+)
+
+# Evaluate model on test set
+print("\nEvaluating model on test set...")
+test_loss, test_accuracy = model.evaluate(test_generator, verbose=1)
+print(f'\nTest Loss: {test_loss:.4f}')
+print(f'Test Accuracy: {test_accuracy:.4f}')
+
+# Generate predictions for detailed metrics
+print("\nGenerating predictions for detailed metrics...")
+y_pred_probs = model.predict(test_generator, verbose=1)
+y_pred = (y_pred_probs > 0.5).astype(int).flatten()
+
+# Calculate comprehensive evaluation metrics
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+
+print(f'\nPrecision: {precision:.4f}')
+print(f'Recall: {recall:.4f}')
+print(f'F1-Score: {f1:.4f}')
+
+# Print classification report
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, target_names=['No Mask', 'With Mask']))
+
+# Generate confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+print("\nConfusion Matrix:")
+print(cm)
+
+# Visualize confusion matrix
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+            xticklabels=['No Mask', 'With Mask'],
+            yticklabels=['No Mask', 'With Mask'])
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.title('Confusion Matrix')
+plt.tight_layout()
+plt.savefig('models/confusion_matrix.png')
 plt.show()
 
-plt.plot(h.history['acc'], label = 'train acc')
-plt.plot(h.history['val_acc'], label= 'validation acc')
+# Plot training history - Loss
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(history.history['loss'], label='train loss')
+plt.plot(history.history['val_loss'], label='validation loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training and Validation Loss')
 plt.legend()
+plt.grid(True)
+
+# Plot training history - Accuracy
+plt.subplot(1, 2, 2)
+plt.plot(history.history['accuracy'], label='train accuracy')
+plt.plot(history.history['val_accuracy'], label='validation accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.title('Training and Validation Accuracy')
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
+plt.savefig('models/training_history.png')
 plt.show()
 
+# Save final model
+print("\nSaving final model...")
+model.save('models/final_model.h5')
+print("Final model saved to 'models/final_model.h5'")
 
-#predictive system
+# Predictive system
+print("\n" + "="*50)
+print("PREDICTION SYSTEM")
+print("="*50)
 input_image_path = input("Path of the image to be predicted: ")
-input_image = Image.open(input_image_path)
-input_image_resized = input_image.resize((128,128))
-input_image_resized = np.array(input_image_resized)
-input_image_scaled = input_image_resized/255
 
-input_image_reshaped = np.reshape(input_image_scaled,[1,128,128,3])
-input_prediction = model.predict(input_image_reshaped)
-print(input_prediction)
+try:
+    input_image = Image.open(input_image_path)
+    input_image_resized = input_image.resize((128, 128))
+    input_image_array = np.array(input_image_resized)
+    input_image_scaled = input_image_array / 255.0
+    input_image_reshaped = np.reshape(input_image_scaled, [1, 128, 128, 3])
+    
+    input_prediction = model.predict(input_image_reshaped, verbose=0)
+    confidence = input_prediction[0][0]
+    
+    print(f"\nPrediction probability: {confidence:.4f}")
+    
+    if confidence > 0.5:
+        print(f"Result: Wearing mask (Confidence: {confidence*100:.2f}%)")
+    else:
+        print(f"Result: No mask (Confidence: {(1-confidence)*100:.2f}%)")
+        
+except Exception as e:
+    print(f"Error processing image: {e}")
 
-input_pred_label = np.argmax(input_prediction)
-
-print(input_pred_label)
-
-if input_pred_label ==1:
-    print("Wearing mask")
-else:
-    print("No mask")
+print("\nTraining complete!")
