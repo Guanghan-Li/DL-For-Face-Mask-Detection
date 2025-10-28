@@ -1,4 +1,5 @@
 import os
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -8,48 +9,68 @@ from sklearn.metrics import classification_report, confusion_matrix, precision_s
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
-# Paths to dataset
-with_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask'
-with_mask_files = os.listdir(with_mask_path)
+with_mask_path = r'/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask'
+all_with_mask_files = os.listdir(with_mask_path)
 
-without_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask'
-without_mask_files = os.listdir(without_mask_path)
+without_mask_path = r'/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask'
+all_without_mask_files = os.listdir(without_mask_path)
 
-# Create labels
-with_mask_labels = [1] * 3725
-without_mask_labels = [0] * 3828
-labels = with_mask_labels + without_mask_labels
+# Filter to include only valid image files
+valid_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif'}
+with_mask_files = [f for f in all_with_mask_files if os.path.splitext(f.lower())[1] in valid_extensions]
+without_mask_files = [f for f in all_without_mask_files if os.path.splitext(f.lower())[1] in valid_extensions]
 
-# Manual data loading (kept for train_test_split compatibility)
+#display image with/without mask
+'''
+img_mask = mpimg.imread('/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask/with_mask_1.jpg')
+img_no = mpimg.imread('/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask/without_mask_1.jpg')
+imgplot = plt.imshow(img_mask)
+plt.show()
+imgplot = plt.imshow(img_no)
+plt.show()
+'''
+#image processing
 data = []
+labels = []
 
-with_mask_path_full = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask/'
+with_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask/'
 for img_file in with_mask_files:
-    image = Image.open(with_mask_path_full + img_file)
-    image = image.resize((128, 128))
-    image = image.convert('RGB')
-    image = np.array(image)
-    data.append(image)
+    try:
+        image = Image.open(with_mask_path + img_file)
+        image = image.resize((128, 128))
+        image = image.convert('RGB')
+        image = np.array(image)
+        data.append(image)
+        labels.append(1)
+    except Exception as e:
+        print(f"Skipping {img_file}: {e}")
+        continue
 
-without_mask_path_full = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask/'
+without_mask_path = '/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask/'
 for img_file in without_mask_files:
-    image = Image.open(without_mask_path_full + img_file)
-    image = image.resize((128, 128))
-    image = image.convert('RGB')
-    image = np.array(image)
-    data.append(image)
+    try:
+        image = Image.open(without_mask_path + img_file)
+        image = image.resize((128, 128))
+        image = image.convert('RGB')
+        image = np.array(image)
+        data.append(image)
+        labels.append(0)
+    except Exception as e:
+        print(f"Skipping {img_file}: {e}")
+        continue
 
 # Convert to numpy arrays
 x = np.array(data)
 y = np.array(labels)
 
-# Train-validation-test split
-x_train_val, x_test, y_train_val, y_test = train_test_split(x, y, test_size=0.2, random_state=2)
-x_train, x_val, y_train, y_val = train_test_split(x_train_val, y_train_val, test_size=0.2, random_state=2)
+# Train-validation-test split with stratification
+x_train_val, x_test, y_train_val, y_test = train_test_split(x, y, test_size=0.2, random_state=2, stratify=y)
+x_train, x_val, y_train, y_val = train_test_split(x_train_val, y_train_val, test_size=0.2, random_state=2, stratify=y_train_val)
 
 # Create ImageDataGenerator for data augmentation
 train_datagen = ImageDataGenerator(
@@ -59,22 +80,18 @@ train_datagen = ImageDataGenerator(
     horizontal_flip=True,
     zoom_range=0.2,
     brightness_range=[0.8, 1.2],
-    rescale=1./255
+    preprocessing_function=preprocess_input
 )
 
 # Validation and test generators without augmentation
-val_datagen = ImageDataGenerator(rescale=1./255)
-test_datagen = ImageDataGenerator(rescale=1./255)
+val_datagen = ImageDataGenerator(preprocessing_function=preprocess_input)
+test_datagen = ImageDataGenerator(preprocessing_function=preprocess_input)
 
 # Create data generators using flow method
 batch_size = 32
 train_generator = train_datagen.flow(x_train, y_train, batch_size=batch_size, shuffle=True)
 val_generator = val_datagen.flow(x_val, y_val, batch_size=batch_size, shuffle=False)
 test_generator = test_datagen.flow(x_test, y_test, batch_size=batch_size, shuffle=False)
-
-# Calculate steps
-steps_per_epoch = len(x_train) // batch_size
-validation_steps = len(x_val) // batch_size
 
 # Build transfer learning model with MobileNetV2
 base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
@@ -99,6 +116,9 @@ model.compile(
 # Print model summary
 print("\nModel Architecture:")
 model.summary()
+
+# Ensure models directory exists
+os.makedirs('models', exist_ok=True)
 
 # Setup training callbacks
 checkpoint = ModelCheckpoint(
@@ -130,9 +150,7 @@ callbacks = [checkpoint, early_stopping, reduce_lr]
 print("\nStarting model training...")
 history = model.fit(
     train_generator,
-    steps_per_epoch=steps_per_epoch,
     validation_data=val_generator,
-    validation_steps=validation_steps,
     epochs=30,
     callbacks=callbacks,
     verbose=1
@@ -219,8 +237,8 @@ try:
     input_image = Image.open(input_image_path)
     input_image_resized = input_image.resize((128, 128))
     input_image_array = np.array(input_image_resized)
-    input_image_scaled = input_image_array / 255.0
-    input_image_reshaped = np.reshape(input_image_scaled, [1, 128, 128, 3])
+    input_image_preprocessed = preprocess_input(input_image_array)
+    input_image_reshaped = np.reshape(input_image_preprocessed, [1, 128, 128, 3])
     
     input_prediction = model.predict(input_image_reshaped, verbose=0)
     confidence = input_prediction[0][0]
