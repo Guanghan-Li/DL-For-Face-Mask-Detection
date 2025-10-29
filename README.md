@@ -28,10 +28,25 @@ Modular face-mask detection pipeline powered by MobileNetV2 transfer learning. D
 - Data augmentation mirrors the prior ImageDataGenerator setup (flips, rotations, translations, zoom, brightness) but now runs inside the `tf.data` pipeline.
 
 ## Evaluation & Outputs
-- `artifacts/<timestamp>/metrics/metrics.json`: loss, accuracy, precision, recall, F1, class names.
+- `artifacts/<timestamp>/metrics/metrics.json`: loss, accuracy, precision, recall, F1, plus ROC/PR AUC (binary runs).
 - `artifacts/<timestamp>/metrics/classification_report.txt`: full precision/recall table.
-- `artifacts/<timestamp>/plots/`: training curves and confusion matrix heatmap.
-- `artifacts/<timestamp>/metadata.json`: frozen config and label mappings for reproducibility.
+- `artifacts/<timestamp>/metrics/epoch_metrics.csv`: per-epoch history for reuse in dashboards.
+- `artifacts/<timestamp>/metadata.json`: frozen config, label mappings, and artifact index.
+
+## Visualization & Metrics
+- Static plots in `artifacts/<timestamp>/plots/`:
+  - `training_history_enhanced.png`, `confusion_matrix_enhanced.png`, `per_class_metrics.png`
+  - Optional: `learning_rate_schedule.png`, `class_distribution.png`, `roc_curve.png`, `precision_recall_curve.png`, `sample_predictions.png`
+- Interactive Plotly dashboard: `artifacts/<timestamp>/plots/metrics_dashboard.html`
+- TensorBoard logs: `artifacts/<timestamp>/tensorboard/`
+- Normalized confusion matrix and per-class stats CSVs live in `artifacts/<timestamp>/metrics/`
+
+Open the artifacts with:
+```bash
+python main.py train --config configs/base.yaml --run-name viz-upgrade
+tensorboard --logdir artifacts/<timestamp>-viz-upgrade/tensorboard
+```
+- CSVs back the Plotly dashboard and can feed downstream analytics notebooks.
 
 ## Prediction CLI
 Use the dedicated predictor to score individual images:

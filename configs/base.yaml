@@ -20,3 +20,15 @@ training:
 artifacts:
   root: ../artifacts
   model_registry: ../models
+
+visualization:
+  enabled: true
+  dpi: 300
+  style: darkgrid
+  color_palette: Set2
+  sample_predictions_count: 16
+  include_roc_curve: true
+  include_pr_curve: true
+  include_lr_schedule: true
+  include_class_distribution: true
+  include_dashboard: true

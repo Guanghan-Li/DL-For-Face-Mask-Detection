@@ -36,11 +36,26 @@ class ArtifactsConfig:
 
 
 @dataclass
+class VisualizationConfig:
+    enabled: bool = True
+    dpi: int = 300
+    style: str = "darkgrid"
+    color_palette: str = "Set2"
+    sample_predictions_count: int = 16
+    include_roc_curve: bool = True
+    include_pr_curve: bool = True
+    include_lr_schedule: bool = True
+    include_class_distribution: bool = True
+    include_dashboard: bool = True
+
+
+@dataclass
 class Config:
     seed: int
     data: DataConfig
     training: TrainingConfig
     artifacts: ArtifactsConfig
+    visualization: VisualizationConfig
 
 
 def load_config(path: Path) -> Config:
@@ -77,11 +92,26 @@ def load_config(path: Path) -> Config:
         model_registry=(base_dir / artifacts_cfg["model_registry"]).resolve(),
     )
 
+    visualization_cfg = raw.get("visualization", {})
+    visualization = VisualizationConfig(
+        enabled=bool(visualization_cfg.get("enabled", True)),
+        dpi=int(visualization_cfg.get("dpi", 300)),
+        style=str(visualization_cfg.get("style", "darkgrid")),
+        color_palette=str(visualization_cfg.get("color_palette", "Set2")),
+        sample_predictions_count=int(visualization_cfg.get("sample_predictions_count", 16)),
+        include_roc_curve=bool(visualization_cfg.get("include_roc_curve", True)),
+        include_pr_curve=bool(visualization_cfg.get("include_pr_curve", True)),
+        include_lr_schedule=bool(visualization_cfg.get("include_lr_schedule", True)),
+        include_class_distribution=bool(visualization_cfg.get("include_class_distribution", True)),
+        include_dashboard=bool(visualization_cfg.get("include_dashboard", True)),
+    )
+
     return Config(
         seed=int(raw["seed"]),
         data=data,
         training=training,
         artifacts=artifacts,
+        visualization=visualization,
     )
 
 

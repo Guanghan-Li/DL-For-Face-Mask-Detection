@@ -1,0 +1,51 @@
+{
+  "config": {
+    "seed": 42,
+    "data": {
+      "root": "/Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data",
+      "image_size": [
+        128,
+        128
+      ],
+      "validation_split": 0.2,
+      "test_split": 0.2,
+      "batch_size": 32
+    },
+    "training": {
+      "epochs": 30,
+      "learning_rate": 0.001,
+      "dense_units": 128,
+      "dropout_rate": 0.5,
+      "early_stopping_patience": 5,
+      "reduce_lr_patience": 3,
+      "reduce_lr_factor": 0.5,
+      "min_lr": 1e-07
+    },
+    "artifacts": {
+      "root": "/Users/garrick/codes/Machine Learning Projects/Facemask Detection/artifacts",
+      "model_registry": "/Users/garrick/codes/Machine Learning Projects/Facemask Detection/models"
+    },
+    "visualization": {
+      "enabled": true,
+      "dpi": 300,
+      "style": "darkgrid",
+      "color_palette": "Set2",
+      "sample_predictions_count": 16,
+      "include_roc_curve": true,
+      "include_pr_curve": true,
+      "include_lr_schedule": true,
+      "include_class_distribution": true,
+      "include_dashboard": true
+    }
+  },
+  "class_to_index": {
+    "without_mask": 0,
+    "with_mask": 1
+  },
+  "run_dir": "/Users/garrick/codes/Machine Learning Projects/Facemask Detection/artifacts/20251028-231512-viz-upgrade",
+  "artifacts": {
+    "history_csv": "/Users/garrick/codes/Machine Learning Projects/Facemask Detection/artifacts/20251028-231512-viz-upgrade/metrics/epoch_metrics.csv",
+    "per_class_csv": "/Users/garrick/codes/Machine Learning Projects/Facemask Detection/artifacts/20251028-231512-viz-upgrade/metrics/per_class_metrics.csv",
+    "confusion_matrix_csv": "/Users/garrick/codes/Machine Learning Projects/Facemask Detection/artifacts/20251028-231512-viz-upgrade/metrics/confusion_matrix_normalized.csv"
+  }
+}
