@@ -1,0 +1,15 @@
+2025-10-28 22:34:22 | INFO | mask_detector | Starting training run in /Users/garrick/codes/Machine Learning Projects/Facemask Detection/artifacts/20251028-223422-run
+2025-10-28 22:34:22 | INFO | mask_detector | Global seed set to 42
+2025-10-28 22:34:22 | INFO | mask_detector | Scanning /Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/without_mask
+2025-10-28 22:34:23 | INFO | mask_detector | Scanning /Users/garrick/codes/Machine Learning Projects/Facemask Detection/archive/data/with_mask
+2025-10-28 22:34:23 | INFO | mask_detector | Discovered 7553 valid images across 2 classes
+2025-10-28 22:34:23 | INFO | mask_detector | Split train has 4531 samples: {'without_mask': 2296, 'with_mask': 2235}
+2025-10-28 22:34:23 | INFO | mask_detector | Split validation has 1511 samples: {'without_mask': 766, 'with_mask': 745}
+2025-10-28 22:34:23 | INFO | mask_detector | Split test has 1511 samples: {'without_mask': 766, 'with_mask': 745}
+2025-10-28 22:34:23 | INFO | mask_detector | TF datasets prepared | train steps=142, val steps=48, test steps=48
+2025-10-28 22:34:24 | INFO | mask_detector | Model compiled with 2422210 parameters
+2025-10-28 22:36:05 | INFO | mask_detector | Training history plot saved to /Users/garrick/codes/Machine Learning Projects/Facemask Detection/artifacts/20251028-223422-run/plots/training_history.png
+2025-10-28 22:36:05 | INFO | mask_detector | Evaluating on test dataset
+2025-10-28 22:36:08 | INFO | mask_detector | Test loss=0.0447, accuracy=0.9821
+2025-10-28 22:36:12 | INFO | mask_detector | Final model saved to /Users/garrick/codes/Machine Learning Projects/Facemask Detection/artifacts/20251028-223422-run/models/final_model.keras
+2025-10-28 22:36:12 | INFO | mask_detector | Model exported to /Users/garrick/codes/Machine Learning Projects/Facemask Detection/models/best_model.keras
